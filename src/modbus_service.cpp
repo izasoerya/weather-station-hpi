@@ -15,22 +15,66 @@ void ModbusService::begin()
 
 uint16_t ModbusService::readSingle()
 {
+    const ModbusObjectProtocol &p = _entity->getProtocols()[0];
+
     uint8_t res = 0;
-    if (_entity->getProtocols()->functionCode == 0x03)
+    if (p.functionCode == 0x03)
     {
-        res = _node.readInputRegisters(
-            _entity->getProtocols()->startAddress,
-            _entity->getProtocols()->lengthAddress);
+        res = _node.readHoldingRegisters(p.startAddress, p.lengthAddress);
     }
-    else if (_entity->getProtocols()->functionCode == 0x04)
+    else if (p.functionCode == 0x04)
     {
-        res = _node.readHoldingRegisters(
-            _entity->getProtocols()->startAddress,
-            _entity->getProtocols()->lengthAddress);
+        res = _node.readInputRegisters(p.startAddress, p.lengthAddress);
     }
     return res == _node.ku8MBSuccess ? _node.getResponseBuffer(0) : 0;
 }
 
 uint16_t *ModbusService::readAll(uint8_t length)
 {
+    const ModbusObjectProtocol *protos = _entity->getProtocols();
+    const size_t count = _entity->getProtocolCount();
+
+    size_t totalRegs = 0;
+    for (size_t i = 0; i < count; ++i)
+        totalRegs += protos[i].lengthAddress;
+
+    if (length != 0 && length < totalRegs)
+        totalRegs = length;
+
+    uint16_t *out = new uint16_t[totalRegs]; // caller must delete[]
+    size_t outIdx = 0;
+
+    for (size_t i = 0; i < count && outIdx < totalRegs; ++i)
+    {
+        const auto &p = protos[i];
+        uint8_t res = 0;
+        if (p.functionCode == 0x03)
+        {
+            res = _node.readHoldingRegisters(p.startAddress, p.lengthAddress);
+        }
+        else if (p.functionCode == 0x04)
+        {
+            res = _node.readInputRegisters(p.startAddress, p.lengthAddress);
+        }
+        else
+        {
+            for (size_t j = 0; j < p.lengthAddress && outIdx < totalRegs; ++j)
+                out[outIdx++] = 0;
+            continue;
+        }
+
+        if (res == _node.ku8MBSuccess)
+        {
+            for (size_t j = 0; j < p.lengthAddress && outIdx < totalRegs; ++j)
+            {
+                out[outIdx++] = _node.getResponseBuffer(j);
+            }
+        }
+        else
+        {
+            for (size_t j = 0; j < p.lengthAddress && outIdx < totalRegs; ++j)
+                out[outIdx++] = 0;
+        }
+    }
+    return out;
 }
