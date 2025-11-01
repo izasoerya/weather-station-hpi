@@ -13,9 +13,9 @@ void ModbusService::begin()
     _node.begin(_entity->getSlaveId(), Serial2);
 }
 
-uint16_t ModbusService::readSingle()
+uint16_t ModbusService::readSingle(uint8_t count)
 {
-    const ModbusObjectProtocol &p = _entity->getProtocols()[0];
+    const ModbusObjectProtocol &p = _entity->getProtocols()[count];
 
     uint8_t res = 0;
     if (p.functionCode == 0x03)

@@ -26,7 +26,7 @@ public:
     ~ModbusService();
 
     void begin();
-    uint16_t readSingle();
+    uint16_t readSingle(uint8_t count);
     uint16_t *readAll(uint8_t length);
     uint8_t getLengthObject() { return sizeof(_entity) / sizeof(ModbusObjectEntity); }
     void healthCheck();
